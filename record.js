@@ -7,14 +7,17 @@ const wrapper = root.lookupType("Wrapper")
 const parse = (data)=>{
     try {
         let GameDetailRecords = root.lookupType("GameDetailRecords").decode(wrapper.decode(data).data)
-        GameDetailRecords.records.forEach((value, index)=>{
-            let data = wrapper.decode(value)
-            GameDetailRecords.records[index] = {
-                "name": data.name.substr(4),
-                "data": root.lookupType(data.name).decode(data.data)
+        GameDetailRecords.actions.forEach((value, index) => {
+            const data = wrapper.decode(value.result)
+
+            if (data && data.name) {
+                GameDetailRecords.actions[index].result = {
+                    name: data.name.substr(4),
+                    data: root.lookupType(data.name).decode(data.data)
+                }
             }
         })
-        return GameDetailRecords.records
+        return GameDetailRecords.actions
     } catch(e) {
         return {"error": "parse error"}
     }

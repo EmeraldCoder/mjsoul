@@ -9,7 +9,8 @@
     "url": "git+https://github.com/takayama-lily/mjsoul.git"
   },
   "scripts": {
-    "test": "node test"
+    "test": "node test",
+    "test:fetch-game-record": "node test-fetch-game-record"
   },
   "keywords": [
     "riichi",
