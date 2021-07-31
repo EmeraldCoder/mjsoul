@@ -7,17 +7,34 @@ const wrapper = root.lookupType("Wrapper")
 const parse = (data)=>{
     try {
         let GameDetailRecords = root.lookupType("GameDetailRecords").decode(wrapper.decode(data).data)
-        GameDetailRecords.actions.forEach((value, index) => {
-            const data = wrapper.decode(value.result)
 
-            if (data && data.name) {
-                GameDetailRecords.actions[index].result = {
-                    name: data.name.substr(4),
-                    data: root.lookupType(data.name).decode(data.data)
+        if (GameDetailRecords.actions != null && GameDetailRecords.actions.length > 0) {
+            // new record style
+            GameDetailRecords.actions.forEach((value, index) => {
+                const data = wrapper.decode(value.result)
+
+                if (data && data.name) {
+                    GameDetailRecords.actions[index].result = {
+                        name: data.name.substr(4),
+                        data: root.lookupType(data.name).decode(data.data)
+                    }
                 }
-            }
-        })
-        return GameDetailRecords.actions
+            })
+            return GameDetailRecords.actions
+        } else if (GameDetailRecords.records != null && GameDetailRecords.records.length > 0) {
+            // old record style
+            GameDetailRecords.records.forEach((value, index)=>{
+                const data = wrapper.decode(value)
+
+                GameDetailRecords.records[index] = {
+                    "name": data.name.substr(4),
+                    "data": root.lookupType(data.name).decode(data.data)
+                }
+            })
+            return GameDetailRecords.records
+        }
+        
+        return null
     } catch(e) {
         return {"error": "parse error"}
     }
