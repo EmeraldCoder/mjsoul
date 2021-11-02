@@ -25,7 +25,8 @@ class MJSoul extends EventEmitter {
         this.wrapper = this.root.lookupType("Wrapper")
         this.url = "wss://gateway-cdn.maj-soul.com/gateway"
         this.timeout = 5000
-        this.clientVersionString = 'web-0.9.304'
+        this.clientVersionString = 'web-0.9.332'
+        this.device = { is_browser: true }
         this._onOpen = ()=>{}
         for (let k in config) {
             this[k] = config[k]
@@ -87,6 +88,9 @@ class MJSoul extends EventEmitter {
 
         if (data.client_version_string == null) {
             data.client_version_string = this.clientVersionString
+        }
+        if (data.device == null) {
+            data.device = this.device
         }
 
         if (this.status !== "connected") {
