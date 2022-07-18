@@ -3,6 +3,7 @@ const EventEmitter = require("events")
 const WebSocket = require("ws")
 const pb = require("protobufjs")
 const crypto = require("crypto")
+const https = require("https")
 const msgType = {notify: 1, req: 2, res: 3}
 const FastTest = [
     "authGame", "broadcastInGame", "checkNetworkDelay", "confirmNewRound", "enterGame", "fetchGamePlayerState",
@@ -25,30 +26,53 @@ class MJSoul extends EventEmitter {
         this.wrapper = this.root.lookupType("Wrapper")
         this.url = "wss://gateway-cdn.maj-soul.com/gateway"
         this.timeout = 5000
-        this.clientVersionString = 'web-0.10.121'
+        this.clientVersionString = null // will be set when calling the open function
         this.device = { is_browser: true }
         this._onOpen = ()=>{}
         for (let k in config) {
             this[k] = config[k]
         }
     }
+    getClientVersionString() {
+        return new Promise((resolve, reject) => {
+            https.get('https://game.maj-soul.com/1/version.json', { headers: { 'Content-Type': 'application/json' } }, (res) => {
+                let raw = Buffer.from([])
+                res.on("data", (data)=>{
+                    raw = Buffer.concat([raw, Buffer.from(data)])
+                })
+                res.on("end", () => {
+                    const { version } = JSON.parse(raw) 
+                    // format like that: 0.10.129.w
+                    // but we want: web-0.10.129
+                    resolve(`web-${version.substr(0, version.length - 2)}`)
+                })
+            }).on("error", err => {
+                reject(err)
+            })
+        })
+    }
     open(onOpen = ()=>{}) {
-        this.status = "connecting"
-        this._onOpen = onOpen
-        this.ws = new WebSocket(this.url, this.wsOption)
-        this.ws.on("open", ()=>{
-            this.status = "connected"
-            onOpen()
+        this.getClientVersionString().then(clientVersionString => {
+            this.clientVersionString = clientVersionString
+            this.status = "connecting"
+            this._onOpen = onOpen
+            this.ws = new WebSocket(this.url, this.wsOption)
+            this.ws.on("open", ()=>{
+                this.status = "connected"
+                onOpen()
+            })
+            this.ws.on("message", this._onMessage.bind(this))
+            this.ws.on("close", ()=>{
+                this.status = "closed"
+                this.ws = null
+                this.msgIndex = 0
+                this.msgQueue = []
+                this.emit("close")
+            })
+            this.ws.on("error", err=>this.emit("error", err))
+        }).catch(err => {
+            this.emit('error', err)
         })
-        this.ws.on("message", this._onMessage.bind(this))
-        this.ws.on("close", ()=>{
-            this.status = "closed"
-            this.ws = null
-            this.msgIndex = 0
-            this.msgQueue = []
-            this.emit("close")
-        })
-        this.ws.on("error", err=>this.emit("error", err))
     }
     close() {
         try {
